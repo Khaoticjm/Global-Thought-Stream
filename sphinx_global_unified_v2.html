@@ -1198,7 +1198,29 @@ footer{border-top:0.5px solid rgba(200,168,48,0.07);padding:0 16px;
 </div>
 
 <script>
-'use strict';
+// ── Dynamic proxy URL ─────────────────────────────────
+// Automatically detects localhost vs production.
+// On Railway/Render the app and proxy are the same server,
+// so we use window.location.origin instead of hardcoding localhost.
+const PROXY_URL = (() => {
+  const loc = window.location;
+  // If running locally on any localhost port, use localhost:3000
+  if(loc.hostname === 'localhost' || loc.hostname === '127.0.0.1'){
+    return 'http://localhost:3000';
+  }
+  // On production, the proxy IS the same server — use current origin
+  return loc.origin;
+})();
+
+const WS_URL = (() => {
+  const loc = window.location;
+  if(loc.hostname === 'localhost' || loc.hostname === '127.0.0.1'){
+    return 'ws://localhost:3000';
+  }
+  // Use wss:// on https, ws:// on http
+  const proto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${loc.host}`;
+})();
 
 // ── Debug flag — set true for development, false for production ──
 const DEBUG = false;
@@ -1211,7 +1233,7 @@ const log = {
 // CONFIG
 // ═══════════════════════════════════════════════════════
 const CFG = {
-  PROXY:    'http://localhost:3000/api/speak', // swap for deployed URL
+  PROXY:    PROXY_URL+'/api/speak', // swap for deployed URL
   LANGS: {
     en:{ name:'English',  bcp:'en-US', flag:'🇺🇸' },
     ig:{ name:'Igbo',     bcp:'en-NG', flag:'🇳🇬' },
@@ -1263,7 +1285,7 @@ const HOB = {
 
     // Fire to server (non-blocking)
     try{
-      const res = await fetch('http://localhost:3000/api/hob/add', {
+      const res = await fetch(PROXY_URL+'/api/hob/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1883,7 +1905,7 @@ const TTS = {
     const stale = (now - this.proxyLastCheck) > this.PROXY_CACHE_MS;
     if(this.proxyOk === true && !stale) return true;
     try{
-      const r = await fetch('http://localhost:3000/health',{
+      const r = await fetch(PROXY_URL+'/health',{
         signal: AbortSignal.timeout(2500)
       });
       this.proxyOk = r.ok;
@@ -2163,7 +2185,7 @@ Address the user by name occasionally when natural. Adapt tone to role — clini
 
     let reply;
     try{
-      const res = await fetch('http://localhost:3000/api/chat', {
+      const res = await fetch(PROXY_URL+'/api/chat', {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -2186,7 +2208,7 @@ Address the user by name occasionally when natural. Adapt tone to role — clini
           // History got corrupted — reset and retry with just the current message
           log.warn('[Brain] History corrupted — resetting and retrying');
           this.history = [{ role: 'user', content: text }];
-          const retry = await fetch('http://localhost:3000/api/chat', {
+          const retry = await fetch(PROXY_URL+'/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json',
               ...(Auth.token() ? { 'X-GTS-Token': Auth.token() } : {}) },
@@ -2216,7 +2238,7 @@ Address the user by name occasionally when natural. Adapt tone to role — clini
       log.error('[Brain] fetch error:', e.message);
       // Distinguish proxy-not-running from other errors
       reply = (e.name === 'TypeError' || e.message?.includes('fetch'))
-        ? 'Could not reach the proxy server. Make sure proxy-server-v2.js is running on localhost:3000.'
+        ? 'Could not reach the server. Check your connection and try again.'
         : 'The connection to my language layer is momentarily interrupted. Please try again.';
     }
 
@@ -3398,7 +3420,7 @@ const Uploader = {
       form.append('session_id', HOB._sessionId ? HOB._sessionId() : 'unknown');
       this._setProgress(20);
 
-      const res = await fetch('http://localhost:3000/api/transcribe', {
+      const res = await fetch(PROXY_URL+'/api/transcribe', {
         method: 'POST',
         body:   form,
         signal: AbortSignal.timeout(90000),
@@ -3541,7 +3563,7 @@ const Translator = {
     let translated;
     try{
       // Isolated fetch through proxy — does not touch Brain.history
-      const res = await fetch('http://localhost:3000/api/chat', {
+      const res = await fetch(PROXY_URL+'/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -3677,7 +3699,7 @@ const HOBPanel = {
     // Try to fetch live summary from proxy if available
     try{
       const r = await fetch(
-        `http://localhost:3000/api/audit/summary?session_id=${encodeURIComponent(sid)}`,
+        `${PROXY_URL}/api/audit/summary?session_id=${encodeURIComponent(sid)}`,
         { signal: AbortSignal.timeout(2000) }
       );
       if(r.ok){
@@ -4140,7 +4162,7 @@ const NarrativePure = {
       .join('\n');
 
     try{
-      const res = await fetch('http://localhost:3000/api/verify', {
+      const res = await fetch(PROXY_URL+'/api/verify', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -4327,7 +4349,7 @@ const Auth = {
     if(btn){ btn.textContent='Signing in…'; btn.disabled=true; }
 
     try{
-      const res = await fetch('http://localhost:3000/api/register',{
+      const res = await fetch(PROXY_URL+'/api/register',{
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ email, name }),
       });
@@ -4348,7 +4370,7 @@ const Auth = {
 
   // ── GET /api/me ─────────────────────────────────────
   async _me(token){
-    const res = await fetch('http://localhost:3000/api/me',{
+    const res = await fetch(PROXY_URL+'/api/me',{
       headers:{ 'X-GTS-Token': token },
       signal: AbortSignal.timeout(5000),
     });
@@ -4471,7 +4493,7 @@ const Auth = {
     if(btn){ btn.textContent = 'Redirecting…'; btn.disabled = true; }
 
     try{
-      const res = await fetch('http://localhost:3000/api/checkout',{
+      const res = await fetch(PROXY_URL+'/api/checkout',{
         method:'POST', headers:{'Content-Type':'application/json','X-GTS-Token':this.token()},
         body: JSON.stringify({ tier }),
       });
@@ -4487,7 +4509,7 @@ const Auth = {
   // ── Manage subscription portal ───────────────────────
   async openPortal(){
     try{
-      const res = await fetch('http://localhost:3000/api/portal',{
+      const res = await fetch(PROXY_URL+'/api/portal',{
         method:'POST', headers:{'X-GTS-Token':this.token()},
       });
       const data = await res.json();
@@ -4547,7 +4569,7 @@ const VoiceStream = {
   connect(){
     if(this.ws && this.ws.readyState === WebSocket.OPEN) return;
     try{
-      const wsUrl = 'ws://localhost:3000/ws/voice';
+      const wsUrl = WS_URL+'/ws/voice';
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {

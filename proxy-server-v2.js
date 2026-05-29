@@ -635,7 +635,15 @@ app.post('/webhook/stripe', async (req, res) => {
 });
 
 // ════════════════════════════════════════════════════════
-// SETUP WIZARD — serve setup.html at /setup
+// ── Root — serve main app at / and /app ──────────────
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'sphinx_global_unified_v2.html'));
+});
+app.get('/app', (req, res) => {
+  res.sendFile(path.join(__dirname, 'sphinx_global_unified_v2.html'));
+});
+
+// ── Setup wizard — serve setup.html at /setup ────────
 // ════════════════════════════════════════════════════════
 app.get('/setup', (req, res) => {
   const setupPath = path.join(__dirname, 'setup.html');
