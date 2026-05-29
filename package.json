@@ -1,0 +1,18 @@
+{
+  "name": "global-thought-stream",
+  "version": "1.0.0",
+  "main": "proxy-server-v2.js",
+  "dependencies": {
+    "better-sqlite3": "^12.10.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "express-rate-limit": "^8.5.2",
+    "form-data": "^4.0.0",
+    "helmet": "^8.2.0",
+    "multer": "^1.4.5-lts.1",
+    "node-fetch": "^3.3.2",
+    "stripe": "^16.3.0",
+    "ws": "^8.21.0"
+  }
+}

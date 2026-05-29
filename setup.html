@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Global Thought Stream — Setup</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --night:   #07000F;
+    --deep:    #12003A;
+    --violet:  #1C0558;
+    --purple:  #2A0C72;
+    --gold:    #C8A830;
+    --goldL:   #EAD4A0;
+    --lav:     #B89FE4;
+    --lavD:    #8B6FD4;
+    --white:   #FFFFFF;
+    --sub:     #A09AB8;
+    --hint:    #6B5290;
+    --green:   #4ADE80;
+    --amber:   #F59E0B;
+    --red:     #F87171;
+    --border:  rgba(200,168,48,0.15);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--night);
+    color: var(--white);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px 80px;
+    overflow-x: hidden;
+  }
+
+  /* ── Background stars ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 15% 20%, rgba(200,168,48,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 42% 8%,  rgba(184,159,228,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 68% 15%, rgba(200,168,48,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 85% 35%, rgba(184,159,228,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 22% 60%, rgba(200,168,48,0.15) 0%, transparent 100%),
+      radial-gradient(1px 1px at 78% 70%, rgba(184,159,228,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 55% 88%, rgba(200,168,48,0.3) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { width: 100%; max-width: 640px; position: relative; z-index: 1; }
+
+  /* ── Header ── */
+  .hero {
+    text-align: center;
+    margin-bottom: 48px;
+    animation: fadeDown 0.6s ease;
+  }
+  @keyframes fadeDown { from { opacity:0; transform:translateY(-16px); } to { opacity:1; transform:translateY(0); } }
+
+  .logo-ring {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, var(--violet), var(--night));
+    border: 1.5px solid var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 24px;
+    font-size: 28px;
+    box-shadow: 0 0 40px rgba(200,168,48,0.15);
+    animation: pulse 3s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{ box-shadow:0 0 40px rgba(200,168,48,0.15); } 50%{ box-shadow:0 0 60px rgba(200,168,48,0.3); } }
+
+  .hero h1 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 32px;
+    color: var(--white);
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+  }
+  .hero p { font-size: 14px; color: var(--sub); font-style: italic; }
+
+  /* ── Progress ── */
+  .progress-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 40px;
+    padding: 0 4px;
+  }
+  .step-dot {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 1.5px solid var(--purple);
+    background: var(--deep);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; color: var(--hint);
+    transition: all 0.3s;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .step-dot.active { border-color: var(--gold); background: var(--purple); color: var(--gold); }
+  .step-dot.done   { border-color: var(--green); background: rgba(74,222,128,0.1); color: var(--green); }
+  .step-line { flex: 1; height: 1px; background: var(--purple); transition: background 0.3s; }
+  .step-line.done { background: var(--green); }
+
+  /* ── Panels ── */
+  .panel {
+    background: var(--deep);
+    border: 0.5px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    display: none;
+    animation: fadeUp 0.4s ease;
+  }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+  .panel.active { display: block; }
+
+  .panel-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    color: var(--white);
+    margin-bottom: 6px;
+  }
+  .panel-sub { font-size: 13px; color: var(--sub); margin-bottom: 28px; line-height: 1.6; }
+
+  /* ── Form elements ── */
+  .field { margin-bottom: 20px; }
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--goldL);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .field .hint { font-size: 11px; color: var(--hint); margin-bottom: 6px; }
+  .field input[type=text],
+  .field input[type=email],
+  .field input[type=password] {
+    width: 100%;
+    background: rgba(42,12,114,0.4);
+    border: 0.5px solid rgba(200,168,48,0.2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--white);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field input:focus { border-color: var(--gold); }
+  .field input::placeholder { color: var(--hint); font-style: italic; }
+
+  .key-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .key-row input { flex: 1; }
+  .key-toggle {
+    width: 36px; height: 38px;
+    background: rgba(42,12,114,0.4);
+    border: 0.5px solid rgba(200,168,48,0.2);
+    border-radius: 8px;
+    color: var(--sub);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .key-toggle:hover { border-color: var(--gold); color: var(--gold); }
+
+  .key-link {
+    font-size: 10px;
+    color: var(--hint);
+    margin-top: 5px;
+    display: block;
+  }
+  .key-link a { color: var(--lavD); text-decoration: none; }
+  .key-link a:hover { color: var(--lav); }
+
+  .key-status {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--hint);
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .key-status.ok  { background: var(--green); }
+  .key-status.bad { background: var(--red); }
+  .key-status.testing { background: var(--amber); animation: blink 0.8s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── Status card ── */
+  .status-card {
+    background: rgba(28,5,88,0.4);
+    border: 0.5px solid rgba(200,168,48,0.1);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .status-card.success { border-color: rgba(74,222,128,0.2); }
+  .status-card.warn    { border-color: rgba(245,158,11,0.2); }
+
+  /* ── Buttons ── */
+  .btn-primary {
+    width: 100%;
+    padding: 12px;
+    background: rgba(200,168,48,0.12);
+    border: 1px solid var(--gold);
+    border-radius: 10px;
+    color: var(--gold);
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+    margin-top: 8px;
+  }
+  .btn-primary:hover { background: rgba(200,168,48,0.22); transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .btn-secondary {
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    border: 0.5px solid rgba(200,168,48,0.15);
+    border-radius: 10px;
+    color: var(--sub);
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-top: 8px;
+  }
+  .btn-secondary:hover { border-color: rgba(200,168,48,0.3); color: var(--lav); }
+
+  /* ── Token display ── */
+  .token-box {
+    background: var(--night);
+    border: 1px solid var(--gold);
+    border-radius: 10px;
+    padding: 16px;
+    margin: 16px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--goldL);
+    word-break: break-all;
+    line-height: 1.6;
+    position: relative;
+  }
+  .copy-btn {
+    position: absolute;
+    top: 8px; right: 8px;
+    padding: 4px 10px;
+    background: rgba(200,168,48,0.1);
+    border: 0.5px solid var(--gold);
+    border-radius: 6px;
+    color: var(--gold);
+    font-size: 10px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.15s;
+  }
+  .copy-btn:hover { background: rgba(200,168,48,0.2); }
+
+  /* ── Check item ── */
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 0.5px solid rgba(200,168,48,0.07);
+    font-size: 13px;
+  }
+  .check-item:last-child { border-bottom: none; }
+  .check-icon { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
+  .check-ok   { background: rgba(74,222,128,0.1);  color: var(--green); border: 0.5px solid rgba(74,222,128,0.3); }
+  .check-warn { background: rgba(245,158,11,0.1);  color: var(--amber); border: 0.5px solid rgba(245,158,11,0.3); }
+  .check-fail { background: rgba(248,113,113,0.1); color: var(--red);   border: 0.5px solid rgba(248,113,113,0.3); }
+  .check-label { flex: 1; color: var(--white); }
+  .check-note  { font-size: 11px; color: var(--hint); }
+
+  /* ── Final card ── */
+  .final-card {
+    background: rgba(42,12,114,0.2);
+    border: 1px solid rgba(200,168,48,0.25);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    margin-top: 24px;
+  }
+  .final-card h3 { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--gold); margin-bottom: 8px; }
+  .final-card p  { font-size: 13px; color: var(--sub); margin-bottom: 16px; }
+
+  .instruction-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 0.5px solid rgba(200,168,48,0.07);
+    text-align: left;
+  }
+  .instruction-step:last-child { border-bottom: none; }
+  .step-num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: var(--night);
+    font-size: 10px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step-text { font-size: 12px; color: var(--sub); line-height: 1.6; }
+  .step-text strong { color: var(--white); }
+  code { font-family: 'JetBrains Mono', monospace; font-size: 11px; background: rgba(42,12,114,0.6); padding: 2px 6px; border-radius: 4px; color: var(--goldL); }
+
+  /* ── Error msg ── */
+  .error-msg { font-size: 11px; color: var(--red); margin-top: 5px; display: none; }
+  .error-msg.show { display: block; }
+
+  /* ── Connected badge ── */
+  .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .badge {
+    font-size: 10px; padding: 3px 10px;
+    border-radius: 20px; font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+  .badge-gold   { background: rgba(200,168,48,0.1); color: var(--gold); border: 0.5px solid rgba(200,168,48,0.25); }
+  .badge-purple { background: rgba(139,111,212,0.1); color: var(--lav); border: 0.5px solid rgba(139,111,212,0.25); }
+
+  @media(max-width:480px) {
+    .panel { padding: 24px 18px; }
+    .hero h1 { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="hero">
+    <div class="logo-ring">🌐</div>
+    <h1>Global Thought Stream™</h1>
+    <p>Setup wizard — takes about 2 minutes</p>
+  </div>
+
+  <div class="progress-bar">
+    <div class="step-dot active" id="dot1" onclick="goTo(0)">1</div>
+    <div class="step-line" id="line1"></div>
+    <div class="step-dot" id="dot2" onclick="goTo(1)">2</div>
+    <div class="step-line" id="line2"></div>
+    <div class="step-dot" id="dot3" onclick="goTo(2)">3</div>
+    <div class="step-line" id="line3"></div>
+    <div class="step-dot" id="dot4" onclick="goTo(3)">4</div>
+    <div class="step-line" id="line4"></div>
+    <div class="step-dot" id="dot5" onclick="goTo(4)">5</div>
+  </div>
+
+  <!-- ── STEP 1: Check connection ────────────────────── -->
+  <div class="panel active" id="panel0">
+    <div class="panel-title">Connect to server</div>
+    <div class="panel-sub">The setup wizard needs the proxy server to be running. Check the connection before we start.</div>
+
+    <div id="connStatus" class="status-card warn">
+      <span style="font-size:18px">⏳</span>
+      <div>
+        <div style="color:var(--amber);font-weight:500">Checking connection…</div>
+        <div style="color:var(--hint);font-size:11px;margin-top:2px">Looking for proxy on localhost:3000</div>
+      </div>
+    </div>
+
+    <div id="connInstructions" style="display:none">
+      <div style="font-size:12px;color:var(--sub);line-height:1.8;margin-bottom:16px">
+        The proxy server isn't running. Start it first:
+      </div>
+      <div style="background:var(--night);border-radius:8px;padding:14px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--goldL);margin-bottom:16px">
+        node proxy-server-v2.js
+      </div>
+      <div style="font-size:11px;color:var(--hint)">Then click "Check again" below.</div>
+    </div>
+
+    <button class="btn-primary" onclick="checkConnection()" id="connBtn">Check again</button>
+    <button class="btn-secondary" onclick="skipToStep(1)">Skip (I'll connect later)</button>
+  </div>
+
+  <!-- ── STEP 2: API Keys ─────────────────────────────── -->
+  <div class="panel" id="panel1">
+    <div class="panel-title">API keys</div>
+    <div class="panel-sub">Add your API keys. These are sent to your local proxy only — never to any third party.</div>
+
+    <div class="field">
+      <label>Anthropic API Key <span style="color:var(--red);font-size:9px">REQUIRED</span></label>
+      <div class="hint">Powers the conversation brain — Claude Sonnet</div>
+      <div class="key-row">
+        <input type="password" id="key_anthropic" placeholder="sk-ant-api03-..." oninput="markKeyDirty('anthropic')">
+        <button class="key-toggle" onclick="toggleVis('key_anthropic')" aria-label="Toggle visibility">👁</button>
+      </div>
+      <span class="key-link"><span class="key-status" id="status_anthropic"></span>Get yours at <a href="#" onclick="openLink('https://console.anthropic.com')">console.anthropic.com</a></span>
+    </div>
+
+    <div class="field">
+      <label>Gemini API Key <span style="color:var(--hint);font-size:9px">FREE TIER AVAILABLE</span></label>
+      <div class="hint">Audio transcription + NarrativePure™ dual verification</div>
+      <div class="key-row">
+        <input type="password" id="key_gemini" placeholder="AIzaSy..." oninput="markKeyDirty('gemini')">
+        <button class="key-toggle" onclick="toggleVis('key_gemini')" aria-label="Toggle visibility">👁</button>
+      </div>
+      <span class="key-link"><span class="key-status" id="status_gemini"></span>Get yours at <a href="#" onclick="openLink('https://aistudio.google.com')">aistudio.google.com</a> — free tier included</span>
+    </div>
+
+    <div class="field">
+      <label>ElevenLabs API Key <span style="color:var(--hint);font-size:9px">OPTIONAL</span></label>
+      <div class="hint">High-quality multilingual voice synthesis</div>
+      <div class="key-row">
+        <input type="password" id="key_elevenlabs" placeholder="sk_..." oninput="markKeyDirty('elevenlabs')">
+        <button class="key-toggle" onclick="toggleVis('key_elevenlabs')" aria-label="Toggle visibility">👁</button>
+      </div>
+      <span class="key-link"><span class="key-status" id="status_elevenlabs"></span>Get yours at <a href="#" onclick="openLink('https://elevenlabs.io')">elevenlabs.io</a> — browser TTS fallback works without this</span>
+    </div>
+
+    <button class="btn-primary" onclick="saveKeys()" id="saveKeysBtn">Save keys and continue →</button>
+    <button class="btn-secondary" onclick="nextStep()">Skip — add keys manually to .env</button>
+  </div>
+
+  <!-- ── STEP 3: Admin account ────────────────────────── -->
+  <div class="panel" id="panel2">
+    <div class="panel-title">Your admin account</div>
+    <div class="panel-sub">Create your account to access all features, test the app, and manage users.</div>
+
+    <div class="field">
+      <label>Email address</label>
+      <input type="email" id="admin_email" placeholder="you@example.com">
+      <div class="error-msg" id="email_err">Please enter a valid email address</div>
+    </div>
+
+    <div class="field">
+      <label>Your name</label>
+      <input type="text" id="admin_name" placeholder="Jalisa">
+    </div>
+
+    <button class="btn-primary" onclick="createAdmin()" id="createAdminBtn">Create admin account →</button>
+  </div>
+
+  <!-- ── STEP 4: Token ─────────────────────────────────── -->
+  <div class="panel" id="panel3">
+    <div class="panel-title">Your admin token</div>
+    <div class="panel-sub">This token unlocks all features with no rate limits. Save it somewhere safe.</div>
+
+    <div class="status-card success">
+      <span style="font-size:18px">✓</span>
+      <div>
+        <div style="color:var(--green);font-weight:500">Admin account created</div>
+        <div style="color:var(--hint);font-size:11px;margin-top:2px" id="tokenEmail">—</div>
+      </div>
+    </div>
+
+    <div class="token-box" id="tokenBox">
+      —
+      <button class="copy-btn" onclick="copyToken()">Copy</button>
+    </div>
+
+    <div style="font-size:12px;color:var(--sub);line-height:1.7;margin:12px 0">
+      This token is stored in your browser automatically when you open the app.
+      You can also find it in your proxy server database at any time.
+    </div>
+
+    <div class="badge-row">
+      <span class="badge badge-gold">Admin tier</span>
+      <span class="badge badge-purple">Unlimited messages</span>
+      <span class="badge badge-gold">All features</span>
+      <span class="badge badge-purple">No rate limits</span>
+    </div>
+
+    <button class="btn-primary" onclick="nextStep()" style="margin-top:20px">Continue to launch →</button>
+  </div>
+
+  <!-- ── STEP 5: Launch ────────────────────────────────── -->
+  <div class="panel" id="panel4">
+    <div class="panel-title">Ready to launch</div>
+    <div class="panel-sub">Setup is complete. Here's your summary and how to open the app.</div>
+
+    <div id="launchChecks"></div>
+
+    <div class="final-card">
+      <h3>Open the app</h3>
+      <p>The proxy server must be running. Then open the app in your browser.</p>
+
+      <div class="instruction-step">
+        <div class="step-num">1</div>
+        <div class="step-text">
+          <strong>Start the proxy server</strong><br>
+          In your terminal: <code>node proxy-server-v2.js</code>
+        </div>
+      </div>
+      <div class="instruction-step">
+        <div class="step-num">2</div>
+        <div class="step-text">
+          <strong>Open the app</strong><br>
+          <code>http://localhost:3000/sphinx_global_unified_v2.html</code>
+        </div>
+      </div>
+      <div class="instruction-step">
+        <div class="step-num">3</div>
+        <div class="step-text" id="tokenInstructions">
+          <strong>Sign in as admin</strong><br>
+          Your token will be set automatically if you clicked "Open app" below.
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="openApp()" id="openAppBtn">Open Global Thought Stream →</button>
+    <div style="font-size:11px;color:var(--hint);text-align:center;margin-top:10px">Opens in a new tab — proxy must be running</div>
+  </div>
+
+</div>
+
+<script>
+  let currentStep = 0;
+  let adminToken  = null;
+  let adminEmail  = null;
+  const PROXY     = 'http://localhost:3000';
+
+  // ── Navigation ──────────────────────────────────────────
+  function goTo(step) {
+    document.querySelectorAll('.panel').forEach((p,i) => p.classList.toggle('active', i === step));
+    document.querySelectorAll('.step-dot').forEach((d,i) => {
+      d.classList.toggle('active', i === step);
+      d.classList.toggle('done', i < step);
+    });
+    document.querySelectorAll('.step-line').forEach((l,i) => l.classList.toggle('done', i < step));
+    currentStep = step;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function nextStep() { goTo(currentStep + 1); }
+  function skipToStep(s) { goTo(s); }
+
+  // ── Step 1: Check proxy connection ──────────────────────
+  async function checkConnection() {
+    const btn = document.getElementById('connBtn');
+    const card = document.getElementById('connStatus');
+    btn.textContent = 'Checking…'; btn.disabled = true;
+
+    try {
+      const r = await fetch(`${PROXY}/health`, { signal: AbortSignal.timeout(4000) });
+      const data = await r.json();
+      card.className = 'status-card success';
+      card.innerHTML = `
+        <span style="font-size:18px">✓</span>
+        <div>
+          <div style="color:var(--green);font-weight:500">Server connected (v${data.version || '?'})</div>
+          <div style="color:var(--hint);font-size:11px;margin-top:2px">
+            Claude: ${data.claude_ready ? '✓' : '✗ key missing'} &nbsp;·&nbsp;
+            Gemini: ${data.gemini_ready ? '✓' : '✗ key missing'} &nbsp;·&nbsp;
+            Auth: ${data.auth ? '✓' : '✗'}
+          </div>
+        </div>`;
+      document.getElementById('connInstructions').style.display = 'none';
+      btn.textContent = 'Next →';
+      btn.disabled = false;
+      btn.onclick = nextStep;
+    } catch(e) {
+      card.className = 'status-card warn';
+      card.innerHTML = `
+        <span style="font-size:18px">✗</span>
+        <div>
+          <div style="color:var(--red);font-weight:500">Cannot connect to proxy server</div>
+          <div style="color:var(--hint);font-size:11px;margin-top:2px">Make sure node proxy-server-v2.js is running</div>
+        </div>`;
+      document.getElementById('connInstructions').style.display = 'block';
+      btn.textContent = 'Check again'; btn.disabled = false;
+    }
+  }
+
+  // ── Step 2: Save API keys ────────────────────────────────
+  function toggleVis(id) {
+    const inp = document.getElementById(id);
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  }
+
+  function markKeyDirty(key) {
+    const s = document.getElementById('status_' + key);
+    if (s) { s.className = 'key-status'; }
+  }
+
+  async function saveKeys() {
+    const btn = document.getElementById('saveKeysBtn');
+    const anthropic   = document.getElementById('key_anthropic').value.trim();
+    const gemini      = document.getElementById('key_gemini').value.trim();
+    const elevenlabs  = document.getElementById('key_elevenlabs').value.trim();
+
+    if (!anthropic) {
+      document.getElementById('key_anthropic').focus();
+      document.getElementById('key_anthropic').style.borderColor = 'var(--red)';
+      return;
+    }
+    document.getElementById('key_anthropic').style.borderColor = '';
+
+    btn.textContent = 'Saving…'; btn.disabled = true;
+
+    // Send to proxy /api/admin/update-env endpoint
+    try {
+      const r = await fetch(`${PROXY}/api/admin/update-env`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json',
+                   'X-Admin-Secret': await getAdminSecret() },
+        body: JSON.stringify({ anthropic, gemini, elevenlabs }),
+        signal: AbortSignal.timeout(5000),
+      });
+      if (r.ok) {
+        setKeyStatus('anthropic', anthropic ? 'ok' : 'none');
+        setKeyStatus('gemini',    gemini    ? 'ok' : 'none');
+        setKeyStatus('elevenlabs',elevenlabs? 'ok' : 'none');
+        nextStep();
+      } else {
+        // Proxy update-env not available — show manual instructions
+        showManualKeyInstructions(anthropic, gemini, elevenlabs);
+      }
+    } catch(e) {
+      showManualKeyInstructions(anthropic, gemini, elevenlabs);
+    }
+    btn.textContent = 'Save keys and continue →'; btn.disabled = false;
+  }
+
+  function showManualKeyInstructions(a, g, e) {
+    const lines = ['# Add these to your .env file:'];
+    if (a) lines.push(`ANTHROPIC_API_KEY=${a}`);
+    if (g) lines.push(`GEMINI_API_KEY=${g}`);
+    if (e) lines.push(`ELEVENLABS_API_KEY=${e}`);
+    lines.push('# Then restart: node proxy-server-v2.js');
+
+    const div = document.createElement('div');
+    div.style.cssText = 'background:var(--night);border-radius:8px;padding:14px;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--goldL);margin:12px 0;line-height:1.8;word-break:break-all;position:relative';
+    div.textContent = lines.join('\n');
+    const btn2 = document.createElement('button');
+    btn2.className = 'copy-btn';
+    btn2.textContent = 'Copy';
+    btn2.onclick = () => { navigator.clipboard.writeText(lines.join('\n')); btn2.textContent = 'Copied!'; };
+    div.appendChild(btn2);
+
+    document.getElementById('panel1').insertBefore(div, document.getElementById('saveKeysBtn'));
+    nextStep();
+  }
+
+  function setKeyStatus(key, state) {
+    const s = document.getElementById('status_' + key);
+    if (!s) return;
+    s.className = 'key-status' + (state === 'ok' ? ' ok' : state === 'bad' ? ' bad' : '');
+  }
+
+  async function getAdminSecret() {
+    try {
+      const r = await fetch(`${PROXY}/health`);
+      const d = await r.json();
+      return d.admin_hint || '';
+    } catch(e) { return ''; }
+  }
+
+  function openLink(url) { window.open(url, '_blank'); return false; }
+
+  // ── Step 3: Create admin account ────────────────────────
+  async function createAdmin() {
+    const email = document.getElementById('admin_email').value.trim();
+    const name  = document.getElementById('admin_name').value.trim();
+    const errEl = document.getElementById('email_err');
+    const btn   = document.getElementById('createAdminBtn');
+
+    if (!email || !email.includes('@')) {
+      errEl.classList.add('show'); return;
+    }
+    errEl.classList.remove('show');
+    btn.textContent = 'Creating account…'; btn.disabled = true;
+
+    // First try admin bootstrap endpoint
+    try {
+      const secret = await getAdminSecretFromEnv();
+      let r;
+      if (secret) {
+        r = await fetch(`${PROXY}/api/admin/bootstrap`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': secret },
+          body: JSON.stringify({ email, name }),
+          signal: AbortSignal.timeout(5000),
+        });
+      } else {
+        // Fall back to regular registration
+        r = await fetch(`${PROXY}/api/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, name }),
+          signal: AbortSignal.timeout(5000),
+        });
+      }
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Registration failed');
+      adminToken = data.token;
+      adminEmail = email;
+      document.getElementById('tokenBox').childNodes[0].textContent = data.token;
+      document.getElementById('tokenEmail').textContent = `${email} · ${data.tier || 'registered'} tier`;
+      nextStep();
+    } catch(e) {
+      btn.textContent = 'Create admin account →'; btn.disabled = false;
+      errEl.textContent = e.message || 'Could not create account — is the proxy running?';
+      errEl.classList.add('show');
+    }
+  }
+
+  async function getAdminSecretFromEnv() {
+    // The proxy doesn't expose the secret, but if the user set one we can ask
+    // For now return empty — the bootstrap endpoint will handle it
+    return '';
+  }
+
+  function copyToken() {
+    if (!adminToken) return;
+    navigator.clipboard.writeText(adminToken).then(() => {
+      const btn = document.querySelector('.copy-btn');
+      if (btn) { btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy', 2000); }
+    });
+  }
+
+  // ── Step 5: Launch ───────────────────────────────────────
+  async function buildLaunchChecks() {
+    const container = document.getElementById('launchChecks');
+    const checks = [];
+
+    try {
+      const r  = await fetch(`${PROXY}/health`, { signal: AbortSignal.timeout(3000) });
+      const d  = await r.json();
+      checks.push({ ok: true,        label: 'Proxy server',       note: `v${d.version}` });
+      checks.push({ ok: d.claude_ready, label: 'Claude (Anthropic)', note: d.claude_ready ? d.claude : 'key missing — add ANTHROPIC_API_KEY to .env' });
+      checks.push({ ok: d.gemini_ready, label: 'Gemini (Google)',    note: d.gemini_ready ? d.gemini : 'optional — add GEMINI_API_KEY to .env' });
+      checks.push({ ok: d.auth,        label: 'User auth + SQLite', note: d.auth ? 'ready' : 'unavailable' });
+      checks.push({ ok: !!adminToken,  label: 'Admin account',     note: adminToken ? adminEmail : 'not created — run install again' });
+    } catch(e) {
+      checks.push({ ok: false, label: 'Proxy server', note: 'not running — start with: node proxy-server-v2.js' });
+    }
+
+    container.innerHTML = checks.map(c => `
+      <div class="check-item">
+        <div class="check-icon ${c.ok ? 'check-ok' : 'check-warn'}">${c.ok ? '✓' : '!'}</div>
+        <span class="check-label">${c.label}</span>
+        <span class="check-note">${c.note}</span>
+      </div>`).join('');
+
+    if (adminToken) {
+      document.getElementById('tokenInstructions').innerHTML = `
+        <strong>Sign in as admin</strong><br>
+        Your token is set automatically — click "Open app" and you'll be signed in.`;
+    }
+  }
+
+  function openApp() {
+    const url = `${PROXY}/sphinx_global_unified_v2.html`;
+    if (adminToken) {
+      // Open app and inject token via localStorage through a redirect page
+      const injectUrl = `${PROXY}/sphinx_global_unified_v2.html#setup_token=${encodeURIComponent(adminToken)}`;
+      window.open(injectUrl, '_blank');
+    } else {
+      window.open(url, '_blank');
+    }
+  }
+
+  // ── Init ─────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', () => {
+    checkConnection();
+    // Wire panel 5 build
+    document.getElementById('dot5').addEventListener('click', buildLaunchChecks);
+  });
+
+  // Auto-inject token when app loads (reads hash)
+  // This runs in the main app, not the wizard — kept as a comment for reference
+  // if (location.hash.startsWith('#setup_token=')) {
+  //   const token = decodeURIComponent(location.hash.slice(13));
+  //   localStorage.setItem('gts_auth_token', token);
+  //   history.replaceState(null, '', location.pathname);
+  // }
+</script>
+
+</body>
+</html>
