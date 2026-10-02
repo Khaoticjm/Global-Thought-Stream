@@ -649,6 +649,7 @@ footer{border-top:0.5px solid rgba(200,168,48,0.07);padding:0 16px;
 .np-mode-banner.active{display:flex}
 .np-mode-dot{width:5px;height:5px;border-radius:50%;background:var(--lav2);
   animation:dp 1.5s infinite}
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
 /* ── Auth chip ── */
 .auth-chip{display:flex;align-items:center;gap:5px;padding:3px 10px 3px 6px;
   border-radius:20px;border:0.5px solid rgba(200,168,48,0.15);
@@ -814,16 +815,16 @@ footer{border-top:0.5px solid rgba(200,168,48,0.07);padding:0 16px;
         </button>
       </div>
     </div>
-    <div class="np-mode-banner" id="npModeBanner" aria-live="polite">
+    <div class="np-mode-banner" id="npModeBanner" aria-live="polite" style="display:none">
       <div class="np-mode-dot"></div>
       NarrativePure™ active — responses will be fact-checked
       <button onclick="NarrativePure.toggle()" style="margin-left:auto;font-size:10px;color:var(--hint);background:none;border:none;cursor:pointer;padding:0">Turn off</button>
     </div>
     <!-- Usage strip — shown when user is authenticated -->
-    <div class="usage-strip" id="usageStrip">
+    <div class="usage-strip" id="usageStrip" style="display:none">
       <div class="usage-bar-track"><div class="usage-bar-fill" id="usageBarFill" style="width:0%"></div></div>
-      <span id="usageLabel">0 / 50 today</span>
-      <button onclick="Auth.openUpgrade()" style="margin-left:auto;font-size:10px;color:var(--gold);background:none;border:none;cursor:pointer;padding:0" id="upgradeNudge" style="display:none">Upgrade ↗</button>
+      <span id="usageLabel"></span>
+      <button onclick="Auth.openUpgrade()" style="display:none;margin-left:auto;font-size:10px;color:var(--gold);background:none;border:none;cursor:pointer;padding:0" id="upgradeNudge">Upgrade ↗</button>
     </div>
     <div class="chat-msgs" id="chatMsgs">
       <div class="sys-banner">
@@ -1916,25 +1917,35 @@ const TTS = {
     return this.proxyOk;
   },
 
-  // Fix 4b — retry with exponential backoff
+  // Retry with exponential backoff + auth token
   async _fetchWithRetry(body, attempt=1){
     try{
+      const headers = { 'Content-Type': 'application/json' };
+      const token = Auth?.token?.();
+      if(token) headers['X-GTS-Token'] = token;
+
       const res = await fetch(CFG.PROXY,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(12000),
+        method:  'POST',
+        headers,
+        body:    JSON.stringify(body),
+        signal:  AbortSignal.timeout(12000),
       });
       if(res.ok) return res;
-      // Server error — don't retry 4xx
+      // 401 — auth issue, fall back to browser TTS silently
+      if(res.status === 401){
+        log.warn('[TTS] Auth failed on /api/speak — using browser TTS');
+        this.proxyOk = false;
+        return res;
+      }
+      // Don't retry 4xx errors
       if(res.status < 500) return res;
       throw new Error(`HTTP ${res.status}`);
     } catch(e){
       if(attempt >= this.MAX_RETRIES){
-        this.proxyOk = null; // force re-ping next time
+        this.proxyOk = null;
         throw e;
       }
-      const delay = Math.pow(2, attempt) * 400; // 800ms, 1600ms
+      const delay = Math.pow(2, attempt) * 400;
       await new Promise(r=>setTimeout(r, delay));
       return this._fetchWithRetry(body, attempt+1);
     }
@@ -1983,10 +1994,9 @@ const TTS = {
       });
 
       if(!res.ok){
-        log.error('[TTS] Server error', res.status);
-        Toast.show('Voice response could not be generated. Text response is above.','warn', 3500);
+        log.warn('[TTS] ElevenLabs error', res.status, '— falling back to browser TTS');
         this.speaking = false;
-        if(onEnd) onEnd();
+        this._browserSpeak(text, lang, onEnd);
         return;
       }
 
@@ -2002,11 +2012,10 @@ const TTS = {
       src.start(0);
 
     } catch(e){
-      log.error('[TTS]', e);
+      log.warn('[TTS] error — falling back to browser TTS:', e.message);
       this.proxyOk = null; // force fresh ping next time
-      Toast.show('Voice response unavailable. Will retry next message.','warn', 3500);
       this.speaking = false;
-      if(onEnd) onEnd();
+      this._browserSpeak(text, lang, onEnd);
     }
   },
 
@@ -4135,20 +4144,21 @@ const NarrativePure = {
 
   // ── Toggle verify mode on/off ─────────────────────
   toggle(){
-    if(!Auth.can('verify')) return; // shows upgrade prompt if not pro
+    if(!Auth.can('verify')) return;
     this.active = !this.active;
     const btn    = document.getElementById('npBtn');
     const banner = document.getElementById('npModeBanner');
-    if(btn)    btn.classList.toggle('on', this.active);
-    if(btn)    btn.setAttribute('aria-pressed', this.active.toString());
-    if(banner) banner.classList.toggle('active', this.active);
+    if(btn){
+      btn.classList.toggle('on', this.active);
+      btn.setAttribute('aria-pressed', this.active.toString());
+    }
+    if(banner){
+      banner.style.display = this.active ? 'flex' : 'none';
+    }
     App.currentMode = this.active ? 'narrativepure' : 'conversation';
-
     Toast.show(
-      this.active
-        ? 'NarrativePure™ on — responses will be fact-checked.'
-        : 'NarrativePure™ off.',
-      this.active ? 'info' : 'info', 2500
+      this.active ? 'NarrativePure™ on — responses will be fact-checked.' : 'NarrativePure™ off.',
+      'info', 2500
     );
   },
 
@@ -4413,15 +4423,43 @@ const Auth = {
     const nudge  = document.getElementById('upgradeNudge');
     if(!strip) return;
 
-    strip.classList.add('show');
-    const pct     = u.daily_limit === -1 ? 0 : Math.min(100, Math.round((u.daily_used / u.daily_limit) * 100));
-    const limitStr = u.daily_limit === -1 ? '∞' : u.daily_limit;
-    if(fill){
-      fill.style.width = pct + '%';
-      fill.className   = 'usage-bar-fill' + (pct >= 90 ? ' full' : pct >= 70 ? ' warn' : '');
+    // Only show strip after authentication
+    strip.style.display = 'flex';
+
+    // Show trial days if on free tier
+    if(u.tier === 'free' && u.trial_days_left != null){
+      if(u.trial_expired){
+        if(label) label.textContent = 'Trial ended — upgrade to continue';
+        if(fill){ fill.style.width = '100%'; fill.className = 'usage-bar-fill full'; }
+        if(nudge){ nudge.style.display = 'block'; nudge.textContent = 'Upgrade now ↗'; }
+        strip.style.background = 'rgba(248,113,113,0.08)';
+        return;
+      }
+      const dailyPct = u.daily_limit > 0 ? Math.min(100, Math.round((u.daily_used / u.daily_limit) * 100)) : 0;
+      const totalPct = u.total_limit > 0 ? Math.min(100, Math.round((u.total_turns / u.total_limit) * 100)) : 0;
+      const pct      = Math.max(dailyPct, totalPct);
+      if(fill){
+        fill.style.width = pct + '%';
+        fill.className   = 'usage-bar-fill' + (pct >= 90 ? ' full' : pct >= 70 ? ' warn' : '');
+      }
+      if(label){
+        const daysText = u.trial_days_left === 1 ? '1 day left' : `${u.trial_days_left} days left`;
+        label.textContent = `${u.daily_used}/${u.daily_limit} today · Trial: ${daysText}`;
+      }
+      if(nudge){
+        nudge.style.display = (pct >= 70 || u.trial_days_left <= 3) ? 'block' : 'none';
+        nudge.textContent   = 'Upgrade ↗';
+      }
+    } else {
+      const pct      = u.daily_limit === -1 ? 0 : Math.min(100, Math.round((u.daily_used / u.daily_limit) * 100));
+      const limitStr = u.daily_limit === -1 ? '∞' : u.daily_limit;
+      if(fill){
+        fill.style.width = pct + '%';
+        fill.className   = 'usage-bar-fill' + (pct >= 90 ? ' full' : pct >= 70 ? ' warn' : '');
+      }
+      if(label) label.textContent = `${u.daily_used} / ${limitStr} today`;
+      if(nudge) nudge.style.display = (pct >= 80 && u.tier === 'free') ? 'block' : 'none';
     }
-    if(label) label.textContent = `${u.daily_used} / ${limitStr} today`;
-    if(nudge) nudge.style.display = (pct >= 80 && u.tier === 'free') ? 'block' : 'none';
   },
 
   // ── Apply feature gating to UI elements ─────────────
@@ -4470,20 +4508,25 @@ const Auth = {
   // ── Handle 401/429 responses from proxy ─────────────
   handleProxyError(code, message){
     if(code === 'unauthenticated'){ this._showAuthOverlay(); return; }
+    if(code === 'trial_expired')  { this.openUpgrade(`Your free trial has ended. Upgrade to Pro to keep the conversation going.`); return; }
+    if(code === 'total_limit')    { this.openUpgrade(`You've used all your free messages. Upgrade to Pro for 2,000 messages per day.`); return; }
     if(code === 'rate_limited')   { this.openUpgrade(message); return; }
     if(code === 'feature_gated')  { this.openUpgrade(message); return; }
   },
 
   // ── Show auth overlay if no token ──────────────────
   _showAuthIfNeeded(){
-    // Give the user a moment before showing — not on immediate load
+    // Show after 2 seconds with smooth fade — not jarring on fast connections
     setTimeout(()=>{
       if(!this.user) this._showAuthOverlay();
-    }, 1500);
+    }, 2000);
   },
 
   _showAuthOverlay(){
-    document.getElementById('authOverlay').classList.add('open');
+    const overlay = document.getElementById('authOverlay');
+    if(!overlay) return;
+    overlay.classList.add('open');
+    overlay.style.animation = 'fadeIn 0.4s ease';
   },
 
   // ── Stripe checkout ──────────────────────────────────
