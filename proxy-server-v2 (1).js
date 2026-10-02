@@ -253,6 +253,9 @@ function verifyChain(blocks) {
 
 // ── Express setup ─────────────────────────────────────
 const app = express();
+
+// Trust Railway/Render/Heroku proxy — required for rate limiting and HTTPS detection
+app.set('trust proxy', 1);
 const PORT          = process.env.PORT || 3000;
 const API_KEY       = process.env.ELEVENLABS_API_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
@@ -274,11 +277,16 @@ function isAdmin(req) {
   return ADMIN_SECRET && secret === ADMIN_SECRET;
 }
 
-// ── Tier definitions ──────────────────────────────────
+// ── Trial and tier configuration ─────────────────────
+const FREE_TRIAL_DAYS    = parseInt(process.env.FREE_TRIAL_DAYS   || '14');  // days before free expires
+const FREE_DAILY_LIMIT   = parseInt(process.env.FREE_DAILY_LIMIT  || '20');  // messages/day on free trial
+const FREE_TOTAL_LIMIT   = parseInt(process.env.FREE_TOTAL_LIMIT  || '100'); // total messages before upgrade required
+
 const TIERS = {
-  free:       { daily_limit: 50,   label: 'Starter',     price_id: null },
-  pro:        { daily_limit: 2000, label: 'Professional', price_id: process.env.STRIPE_PRO_PRICE_ID  || null },
-  enterprise: { daily_limit: -1,   label: 'Enterprise',  price_id: process.env.STRIPE_ENT_PRICE_ID  || null },
+  free:       { daily_limit: FREE_DAILY_LIMIT, total_limit: FREE_TOTAL_LIMIT, trial_days: FREE_TRIAL_DAYS, label: 'Starter',      price_id: null },
+  pro:        { daily_limit: 2000,             total_limit: -1,               trial_days: -1,             label: 'Professional', price_id: process.env.STRIPE_PRO_PRICE_ID  || null },
+  enterprise: { daily_limit: -1,               total_limit: -1,               trial_days: -1,             label: 'Enterprise',   price_id: process.env.STRIPE_ENT_PRICE_ID  || null },
+  admin:      { daily_limit: -1,               total_limit: -1,               trial_days: -1,             label: 'Admin',        price_id: null },
 };
 
 // ── Features gated by tier ────────────────────────────
@@ -438,12 +446,55 @@ app.use(authMiddleware);
 function checkRateLimit(user) {
   if (!user) return { allowed: false, reason: 'unauthenticated' };
   if (user.tier === 'admin' || user.tier === 'enterprise') return { allowed: true };
+
   const tier = TIERS[user.tier] || TIERS.free;
-  if (tier.daily_limit === -1) return { allowed: true };
-  if (user.daily_count >= tier.daily_limit) {
-    return { allowed: false, reason: 'daily_limit', limit: tier.daily_limit, tier: user.tier };
+
+  // ── Trial expiry check (free tier only) ──────────────
+  if (user.tier === 'free' && tier.trial_days > 0) {
+    const createdAt  = user.created_at * 1000; // convert to ms
+    const daysSince  = (Date.now() - createdAt) / (1000 * 60 * 60 * 24);
+    if (daysSince > tier.trial_days) {
+      return {
+        allowed: false,
+        reason:  'trial_expired',
+        days:    Math.floor(daysSince),
+        limit:   tier.trial_days,
+        message: `Your ${tier.trial_days}-day free trial has ended. Upgrade to Pro to continue.`,
+      };
+    }
   }
-  return { allowed: true };
+
+  // ── Total message cap (free tier only) ───────────────
+  if (user.tier === 'free' && tier.total_limit > 0) {
+    if (user.total_turns >= tier.total_limit) {
+      return {
+        allowed: false,
+        reason:  'total_limit',
+        used:    user.total_turns,
+        limit:   tier.total_limit,
+        message: `You've used all ${tier.total_limit} free messages. Upgrade to Pro to continue.`,
+      };
+    }
+  }
+
+  // ── Daily limit check ────────────────────────────────
+  if (tier.daily_limit !== -1 && user.daily_count >= tier.daily_limit) {
+    return {
+      allowed: false,
+      reason:  'daily_limit',
+      limit:   tier.daily_limit,
+      tier:    user.tier,
+      message: `You've reached your daily limit of ${tier.daily_limit} messages. Upgrade to Pro for 2,000/day.`,
+    };
+  }
+
+  // ── All checks passed ────────────────────────────────
+  const tier_obj   = TIERS[user.tier] || TIERS.free;
+  const trialDaysLeft = user.tier === 'free' && tier_obj.trial_days > 0
+    ? Math.max(0, tier_obj.trial_days - Math.floor((Date.now() - user.created_at * 1000) / (1000 * 60 * 60 * 24)))
+    : null;
+
+  return { allowed: true, trial_days_left: trialDaysLeft };
 }
 
 // ── Feature gate check ────────────────────────────────
@@ -508,17 +559,32 @@ app.post('/api/register', (req, res) => {
 // ════════════════════════════════════════════════════════
 app.get('/api/me', (req, res) => {
   if (!req.user) return res.status(401).json({ error: 'Invalid or missing token' });
-  const tier = TIERS[req.user.tier] || TIERS.free;
+  const tier     = TIERS[req.user.tier] || TIERS.free;
+  const isFreeTier = req.user.tier === 'free';
+
+  // Calculate trial days remaining
+  let trial_days_left  = null;
+  let trial_expired    = false;
+  if (isFreeTier && tier.trial_days > 0) {
+    const daysSince   = (Date.now() - req.user.created_at * 1000) / (1000 * 60 * 60 * 24);
+    trial_days_left   = Math.max(0, Math.ceil(tier.trial_days - daysSince));
+    trial_expired     = daysSince > tier.trial_days;
+  }
+
   res.json({
-    email:       req.user.email,
-    name:        req.user.name,
-    tier:        req.user.tier,
-    tier_label:  tier.label,
-    daily_limit: tier.daily_limit,
-    daily_used:  req.user.daily_count,
-    total_turns: req.user.total_turns,
-    features:    TIER_FEATURES[req.user.tier] || TIER_FEATURES.free,
-    stripe_sub:  req.user.stripe_sub || null,
+    email:           req.user.email,
+    name:            req.user.name,
+    tier:            req.user.tier,
+    tier_label:      tier.label,
+    daily_limit:     tier.daily_limit,
+    daily_used:      req.user.daily_count,
+    total_turns:     req.user.total_turns,
+    total_limit:     tier.total_limit,
+    trial_days:      tier.trial_days,
+    trial_days_left,
+    trial_expired,
+    features:        TIER_FEATURES[req.user.tier] || TIER_FEATURES.free,
+    stripe_sub:      req.user.stripe_sub || null,
   });
 });
 
