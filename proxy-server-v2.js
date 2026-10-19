@@ -416,7 +416,9 @@ function sanitizeObj(obj, depth = 0) {
 app.use('/webhook/stripe', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '50kb' }));
 app.use(express.urlencoded({ extended: false }));
-app.use(express.static(path.join(__dirname)));
+// Only serve the HTML pages — never the server code, database or install scripts
+const staticFiles = express.static(path.join(__dirname));
+app.use((req, res, next) => (path.extname(req.path) === '.html' ? staticFiles(req, res, next) : next()));
 
 // ── Token generation ──────────────────────────────────
 function generateToken() {

@@ -1,6 +1,6 @@
 .env
 node_modules
-gts_audit.db
+gts_audit.db*
 admin_token.txt
 *.log
 .npm-cache

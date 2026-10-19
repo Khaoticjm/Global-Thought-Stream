@@ -539,7 +539,7 @@
   let currentStep = 0;
   let adminToken  = null;
   let adminEmail  = null;
-  const PROXY     = 'http://localhost:3000';
+  const PROXY     = ['localhost', '127.0.0.1'].includes(location.hostname) ? 'http://localhost:3000' : location.origin;
 
   // ── Navigation ──────────────────────────────────────────
   function goTo(step) {
